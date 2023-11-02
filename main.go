@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	sonnenbatterie "github.com/wimaha/home-charge/battery"
 	"github.com/wimaha/home-charge/html"
@@ -35,8 +36,18 @@ func main() {
 	fmt.Println("HomeCharge is loading ...")
 	var c conf
 	config = c.getConf()
+
+	go startAutoControl()
+
 	fmt.Println("HomeCharge is running")
 	startWebserver()
+}
+
+func startAutoControl() {
+	for {
+		println("AutoControl")
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func startWebserver() {
