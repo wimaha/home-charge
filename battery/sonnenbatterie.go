@@ -168,7 +168,7 @@ func (s *Sonnenbatterie) GetConfiguration(config string) map[string]interface{} 
 }
 
 func (s *Sonnenbatterie) SetOperationMode(mode int) {
-	s.PutConfiguration("EM_OperatingMode=2")
+	s.PutConfiguration(fmt.Sprintf("%s%d", "EM_OperatingMode=", mode))
 }
 
 func (s *Sonnenbatterie) PutConfiguration(data string) {
