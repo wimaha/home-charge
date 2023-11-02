@@ -37,7 +37,7 @@ func main() {
 	var c conf
 	config = c.getConf()
 
-	go startAutoControl()
+	//go startAutoControl()
 
 	fmt.Println("HomeCharge is running")
 	startWebserver()
