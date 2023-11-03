@@ -31,25 +31,71 @@
 </div>
 <div class="container">
     <div class="header">
-        <h1>Einstellungen</h1>
+        <h2>Geplante Einstellungen</h2>
+    </div>
+    <div class="planned-settings">
+        <ul class="planned-settings-list">
+            <!-- Beispiel-Eintrag -->
+            <li>
+                <div class="planned-setting">
+                    <div class="setting-column-shrink">
+                        <span>1</span>
+                    </div>
+                    <div class="setting-column">
+                        <span>Batterie laden</span>
+                    </div>
+                    <div class="setting-column-shrink">
+                        <span>ab 14:00 Uhr</span>
+                    </div>
+                    <div class="setting-column-shrink">
+                        <button class="delete-button" onclick="deleteEntry(this)">X</button>
+                    </div>
+                </div>
+            </li>
+            <!-- Beispiel-Eintrag -->
+            <li>
+                <div class="planned-setting">
+                    <div class="setting-column-shrink">
+                        <span>2</span>
+                    </div>
+                    <div class="setting-column">
+                        <span>Batterie laden stoppen</span>
+                    </div>
+                    <div class="setting-column-shrink">
+                        <span>bei 60 %</span>
+                    </div>
+                    <div class="setting-column-shrink">
+                        <form action="/delete-schedule-command" method="POST"><input type="hidden" name="schedule-command-id" value="id"><button class="delete-button" onclick="deleteEntry(this)">X</button></form>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <!-- Hinzufügen von Einträgen -->
+        <div class="add-setting">
+            <form action="/add-schedule-command" method="POST"><button id="add-button" class="add-button">Hinzufügen</button></form>
+        </div>
+    </div>
+</div>
+<div class="container">
+    <div class="header">
+        <h1>Batterie-Einstellung</h1>
     </div>
     <form action="/save-settings" method="POST">
     <ul class="settings-list">
     <li>
             <div class="setting">
-                <span>OperationMode</span>
-                <select class="dropdown-horizontal" name="operationMode">
-                    <option value="2" {{ if eq .OperationMode 2 }}selected{{ end }}>automatic</option>
-                    <option value="1" {{ if eq .OperationMode 1 }}selected{{ end }}>manual</option>
-                    <option value="10" {{ if eq .OperationMode 10 }}selected{{ end }}>Time-of-use</option>
-                </select>
+                <span>Automatischer Modus</span>
+                <label class="switch">
+                    <input type="radio" name="batterie" value="auto" {{ if eq .OperationMode 2 }}checked{{ end }}>
+                    <span class="slider round"></span>
+                </label>
             </div>
         </li>
         <li>
             <div class="setting">
                 <span>Batterie Laden</span>
                 <label class="switch">
-                    <input type="checkbox" name="batterie" value="laden">
+                    <input type="radio" name="batterie" value="laden" {{ if and (eq .OperationMode 1) (gt .Pac_total_W 0) }}checked{{ end }}>
                     <span class="slider round"></span>
                 </label>
             </div>
@@ -58,7 +104,7 @@
             <div class="setting">
                 <span>Batterie nicht entladen</span>
                 <label class="switch">
-                    <input type="checkbox" name="batterie" value="nicht_entladen">
+                    <input type="radio" name="batterie" value="nicht_entladen" {{ if and (eq .OperationMode 1) (lt .Pac_total_W 0) }}checked{{ end }}>
                     <span class="slider round"></span>
                 </label>
             </div>

@@ -4,13 +4,16 @@ import (
 	"embed"
 	"html/template"
 	"io"
+
+	"github.com/wimaha/home-charge/database"
 )
 
 //go:embed *
 var files embed.FS
 
 var (
-	dashboard = parse("dashboard.html")
+	dashboard           = parse("dashboard.html")
+	editScheduleCommand = parse("edit-schedule-command.html")
 )
 
 type DashboardParams struct {
@@ -26,6 +29,17 @@ func Dashboard(w io.Writer, p DashboardParams, partial string) error {
 		partial = "layout.html"
 	}
 	return dashboard.ExecuteTemplate(w, partial, p)
+}
+
+type EditScheduleCommandParams struct {
+	BatteryCommands []database.BatteryCommand
+}
+
+func EditScheduleCommand(w io.Writer, p EditScheduleCommandParams, partial string) error {
+	if partial == "" {
+		partial = "layout.html"
+	}
+	return editScheduleCommand.ExecuteTemplate(w, partial, p)
 }
 
 func parse(file string) *template.Template {

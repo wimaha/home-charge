@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	sonnenbatterie "github.com/wimaha/home-charge/battery"
+	"github.com/wimaha/home-charge/database"
 	"github.com/wimaha/home-charge/html"
 	yaml "gopkg.in/yaml.v3"
 )
@@ -38,6 +38,7 @@ func main() {
 	config = c.getConf()
 
 	//go startAutoControl()
+	database.Setup()
 
 	fmt.Println("HomeCharge is running")
 	startWebserver()
@@ -53,6 +54,7 @@ func startAutoControl() {
 func startWebserver() {
 	http.HandleFunc("/", dashboard)
 	http.HandleFunc("/save-settings", saveSettings)
+	http.HandleFunc("/add-schedule-command", addScheduleCommand)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.ListenAndServe(":7618", nil)
 }
@@ -79,7 +81,7 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		operationMode := r.FormValue("operationMode")
+		/*operationMode := r.FormValue("operationMode")
 		if operationMode == "1" || operationMode == "2" || operationMode == "10" {
 			mode, err := strconv.Atoi(operationMode)
 			if err != nil {
@@ -87,14 +89,25 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			sonnenbatterie.SetOperationMode(mode)
-		}
+		}*/
 
 		batterie := r.FormValue("batterie")
-		if batterie == "nicht_entladen" {
+		if batterie == "auto" {
+			sonnenbatterie.SetOperationMode(2)
+		} else if batterie == "nicht_entladen" {
+			sonnenbatterie.SetOperationMode(1)
 			sonnenbatterie.StopDischargeBattery()
 		} else if batterie == "laden" {
+			sonnenbatterie.SetOperationMode(1)
 			sonnenbatterie.ChargeBattery()
 		}
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func addScheduleCommand(w http.ResponseWriter, r *http.Request) {
+	p := html.EditScheduleCommandParams{
+		BatteryCommands: database.GetBatteryCommands(),
+	}
+	html.EditScheduleCommand(w, p, "")
 }

@@ -190,3 +190,91 @@ input:checked + .slider:before {
 .message p {
     font-size: 16px;
 }
+
+/* Geplante Einstellungen */
+.planned-settings {
+    background-color: #f3f3f3;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.planned-settings h2 {
+    font-size: 20px;
+}
+
+.planned-settings-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.planned-setting {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+}
+
+.setting-column {
+    flex: 1;
+}
+
+.setting-column-shrink {
+    flex: 0 0 auto;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.add-setting {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.add-setting input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    font-size: 16px;
+    padding: 5px;
+}
+
+.add-button {
+    background-color: #ffcc33;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.add-button:hover {
+    background-color: #ff9900;
+}
+
+.delete-button {
+    background-color: #f00;
+    color: #fff;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-button:hover {
+    background-color: #cc0000;
+}
+
+/* Stil für das Löschen-Icon */
+.delete-icon {
+    font-size: 20px;
+    margin-right: 5px;
+}

@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="container">
+    <div class="header">
+        <h1>Geplante Einstellung bearbeiten</h1>
+    </div>
+    <form action="/save-schedule-command" method="POST">
+    <ul class="settings-list">
+        <li>
+            <div class="setting">
+                <span>Aktion</span>
+                <select class="dropdown-horizontal" name="action">
+                    {{range $i, $a := .BatteryCommands}}
+                    <option value="{{$a.Id}}">{{$a.Name}}</option>
+                    {{end}}
+                </select>
+            </div>
+        </li>
+        <li>
+            <div class="setting">
+                <span>Auslöser</span>
+                <select class="dropdown-horizontal" name="trigger">
+                    <option value="time">Uhrzeit</option>
+                    <option value="SOC">SOC</option>
+                </select>
+            </div>
+        </li>
+        <li>
+            <div class="setting">
+                <span>Auslösezeit/früheste Auslösung</span>
+                <input class="dropdown-horizontal" type="datetime-local" name="triggerTime" />
+            </div>
+        </li>
+        <li>
+            <div class="setting">
+                <span>SOC</span>
+                <input class="dropdown-horizontal" type="input" name="triggerSOC" />
+            </div>
+        </li>
+    </ul>
+    <button id="save-button" class="save-button" type="submit">Speichern</button>
+    </form>
+</div>
+{{end}}
