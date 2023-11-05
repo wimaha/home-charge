@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -55,6 +56,7 @@ func CreateTables(db *sql.DB) {
 	}
 	fmt.Println("table weBatteryCommandLog created")
 
+	//triggerType: time,SOC
 	sql = `CREATE TABLE IF NOT EXISTS weScheduleCommand (
 		id INTEGER PRIMARY KEY,
 		weBatteryCommand_id INTEGER NOT NULL,
@@ -107,4 +109,159 @@ func GetBatteryCommands() []BatteryCommand {
 	}
 
 	return batteryCommands
+}
+
+type ScheduleCommand struct {
+	Id                 int
+	BatteryCommandId   int
+	BatteryCommandName string
+	TriggerType        string
+	TriggerTime        time.Time
+	TriggerSOC         int
+	Triggered          bool
+}
+
+func GetScheduleCommands(triggered_optional ...bool) []ScheduleCommand {
+	triggered := false
+	if len(triggered_optional) > 0 {
+		triggered = triggered_optional[0]
+	}
+
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	stm, err := db.Prepare("SELECT weScheduleCommand.*, weBatteryCommand.name as batteryCommandName FROM weScheduleCommand INNER JOIN weBatteryCommand ON weScheduleCommand.weBatteryCommand_id = weBatteryCommand.id WHERE weScheduleCommand.triggered = ? ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stm.Close()
+
+	rows, err := stm.Query(triggered)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	scheduleCommands := []ScheduleCommand{}
+	for rows.Next() {
+		var id int
+		var batteryCommandId int
+		var batteryCommandName string
+		var triggerType string
+		var triggerTime time.Time
+		var triggerSOC int
+		var triggered bool
+
+		err = rows.Scan(&id, &batteryCommandId, &triggerType, &triggerTime, &triggerSOC, &triggered, &batteryCommandName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		scheduleCommands = append(scheduleCommands, ScheduleCommand{
+			Id:                 id,
+			BatteryCommandId:   batteryCommandId,
+			BatteryCommandName: batteryCommandName,
+			TriggerType:        triggerType,
+			TriggerTime:        triggerTime,
+			TriggerSOC:         triggerSOC,
+			Triggered:          triggered,
+		})
+	}
+
+	return scheduleCommands
+}
+
+func AddScheduleCommand(scheduleCommand ScheduleCommand) {
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	// Daten in die Tabelle einfügen
+	insertSQL := `
+		INSERT INTO weScheduleCommand (weBatteryCommand_id, triggerType, triggerTime, triggerSOC, triggered)
+		VALUES (?, ?, ?, ?, ?);
+	`
+
+	_, err = db.Exec(insertSQL, scheduleCommand.BatteryCommandId, scheduleCommand.TriggerType, scheduleCommand.TriggerTime, scheduleCommand.TriggerSOC, scheduleCommand.Triggered)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("weScheduleCommand wurde erfolgreich eingefügt.")
+}
+
+func UpdateScheduleCommand(scheduleCommand ScheduleCommand) {
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	// Daten in die Tabelle einfügen
+	updateSQL := `
+		UPDATE weScheduleCommand
+		SET weBatteryCommand_id=?, triggerType=?, triggerTime=?, triggerSOC=?, triggered=?
+		WHERE id=?
+	`
+	_, err = db.Exec(updateSQL, scheduleCommand.BatteryCommandId, scheduleCommand.TriggerType, scheduleCommand.TriggerTime, scheduleCommand.TriggerSOC, scheduleCommand.Triggered, scheduleCommand.Id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("weScheduleCommand wurde erfolgreich aktualisiert.")
+}
+
+func DeleteScheduleCommand(id int) {
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	deleteSQL := "DELETE FROM weScheduleCommand WHERE id = ?;"
+	_, err = db.Exec(deleteSQL, id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("weScheduleCommand mit id ", id, " wurde erfolgreich gelöscht.")
+}
+
+func ParseTime(timeStr string) time.Time {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	//2023-11-05T02:00
+	// Das Format, das Ihre Eingabe entspricht
+	layout := "2006-01-02T15:04"
+	// Zeitumwandlung
+	t, err := time.ParseInLocation(layout, timeStr, loc)
+	if err != nil {
+		log.Fatal("Fehler beim Parsen der Zeit:", err)
+	}
+	return t
+}
+
+func LogBatteryCommand(scheduleCommand ScheduleCommand) {
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	// Daten in die Tabelle einfügen
+	insertSQL := `
+		INSERT INTO weBatteryCommandLog (weBatteryCommand_id)
+		VALUES (?);
+	`
+
+	_, err = db.Exec(insertSQL, scheduleCommand.BatteryCommandId)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("weBatteryCommandLog wurde erfolgreich erstellt.")
 }

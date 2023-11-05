@@ -24,9 +24,18 @@ func NewSonnenbatterie(apiToken string, batteryIP string) *Sonnenbatterie {
 	}
 }
 
-func (s *Sonnenbatterie) Soc() string {
+func (s *Sonnenbatterie) Reload() {
+	s.StatusArray = nil
+	s.OperationModeStored = -1
+}
+
+func (s *Sonnenbatterie) Soc() int {
 	status := s.status()
-	return fmt.Sprintf("%.0f %%", status["USOC"].(float64))
+	return int(status["USOC"].(float64))
+}
+
+func (s *Sonnenbatterie) SocText() string {
+	return fmt.Sprintf("%d %%", s.Soc())
 }
 
 func (s *Sonnenbatterie) BatteryCharging() string {
@@ -221,32 +230,27 @@ func (s *Sonnenbatterie) StopDischargeBattery() {
 func (s *Sonnenbatterie) PostCharge(watt int) {
 	url := fmt.Sprintf("http://%s/api/v2/setpoint/charge/%d", s.BATTERY_IP, watt)
 
+	client := &http.Client{}
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
-		fmt.Println("cURL Error:", err)
+		fmt.Println("Fehler beim Erstellen der Anfrage:", err)
 		return
 	}
 
-	req.Header.Set("Auth-Token", s.API_TOKEN)
+	req.Header.Add("Auth-Token", s.API_TOKEN)
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("cURL Error:", err)
+		fmt.Println("Fehler bei der Anfrage:", err)
 		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("HTTP Request failed with status code %d\n", resp.StatusCode)
-		return
-	}
-
-	responseBody, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading response body:", err)
+		fmt.Println("Fehler beim Lesen der Antwort:", err)
 		return
 	}
 
-	fmt.Println(string(responseBody))
+	fmt.Println("Antwort:", string(body))
 }

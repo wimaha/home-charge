@@ -2,19 +2,24 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	sonnenbatterie "github.com/wimaha/home-charge/battery"
 	"github.com/wimaha/home-charge/database"
+	"github.com/wimaha/home-charge/engine"
 	"github.com/wimaha/home-charge/html"
+	"github.com/wimaha/home-charge/wallbox"
 	yaml "gopkg.in/yaml.v3"
 )
 
 type conf struct {
 	ApiToken  string `yaml:"apiToken"`
 	BatteryIP string `yaml:"batteryIP"`
+	WallboxIP string `yaml:"wallboxIP"`
 }
 
 func (c *conf) getConf() *conf {
@@ -31,23 +36,30 @@ func (c *conf) getConf() *conf {
 }
 
 var config *conf
+var battery *sonnenbatterie.Sonnenbatterie
+var wallboxInstance *wallbox.Mennekes
 
 func main() {
-	fmt.Println("HomeCharge is loading ...")
+	log.Println("HomeCharge is loading ...")
 	var c conf
 	config = c.getConf()
+	battery = sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
 
-	//go startAutoControl()
+	go startAutoControl()
 	database.Setup()
 
-	fmt.Println("HomeCharge is running")
+	wallboxInstance = wallbox.NewMennekes(config.WallboxIP)
+
+	log.Println("HomeCharge is running")
 	startWebserver()
 }
 
 func startAutoControl() {
 	for {
-		println("AutoControl")
+		//println("AutoControl")
 		time.Sleep(10 * time.Second)
+		battery.Reload()
+		engine.DoScheduleCommands(*battery)
 	}
 }
 
@@ -55,24 +67,32 @@ func startWebserver() {
 	http.HandleFunc("/", dashboard)
 	http.HandleFunc("/save-settings", saveSettings)
 	http.HandleFunc("/add-schedule-command", addScheduleCommand)
+	http.HandleFunc("/save-schedule-command", saveScheduleCommand)
+	http.HandleFunc("/delete-schedule-command", deleteScheduleCommand)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.ListenAndServe(":7618", nil)
 }
 
 func dashboard(w http.ResponseWriter, r *http.Request) {
-	sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
+	battery.Reload()
+	//sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
+	wStatus, wStatusText := wallboxInstance.StatusAndText()
 	p := html.DashboardParams{
-		OperationMode:     sonnenbatterie.OperationMode(),
-		OperationModeText: sonnenbatterie.OperationModeText(),
-		SOC:               sonnenbatterie.Soc(),
-		BatteryCharging:   sonnenbatterie.BatteryCharging(),
-		Pac_total_W:       sonnenbatterie.PacTotalW(),
+		OperationMode:     battery.OperationMode(),
+		OperationModeText: battery.OperationModeText(),
+		SOC:               battery.SocText(),
+		BatteryCharging:   battery.BatteryCharging(),
+		Pac_total_W:       battery.PacTotalW(),
+		WallboxStatus:     wStatus,
+		WallboxStatusText: wStatusText,
+		ScheduleComands:   database.GetScheduleCommands(),
 	}
 	html.Dashboard(w, p, "")
 }
 
 func saveSettings(w http.ResponseWriter, r *http.Request) {
-	sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
+	battery.Reload()
+	//sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
 
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
@@ -93,13 +113,13 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 
 		batterie := r.FormValue("batterie")
 		if batterie == "auto" {
-			sonnenbatterie.SetOperationMode(2)
+			battery.SetOperationMode(2)
 		} else if batterie == "nicht_entladen" {
-			sonnenbatterie.SetOperationMode(1)
-			sonnenbatterie.StopDischargeBattery()
+			battery.SetOperationMode(1)
+			battery.StopDischargeBattery()
 		} else if batterie == "laden" {
-			sonnenbatterie.SetOperationMode(1)
-			sonnenbatterie.ChargeBattery()
+			battery.SetOperationMode(1)
+			battery.ChargeBattery()
 		}
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -108,6 +128,50 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 func addScheduleCommand(w http.ResponseWriter, r *http.Request) {
 	p := html.EditScheduleCommandParams{
 		BatteryCommands: database.GetBatteryCommands(),
+		Title:           "Geplante Einstellung hizufügen",
 	}
 	html.EditScheduleCommand(w, p, "")
+}
+
+func deleteScheduleCommand(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		id, err := strconv.Atoi(r.FormValue("schedule-command-id"))
+		if err != nil {
+			return
+		}
+		database.DeleteScheduleCommand(id)
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func saveScheduleCommand(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		//fmt.Printf("%v", r)
+		//action:[1] trigger:[time] triggerSOC:[] triggerTime:[2023-11-05T02:00]
+		// Daten aus der Map in die Struktur umwandeln
+		batteryCommandId, _ := strconv.Atoi(r.FormValue("action"))
+		triggerSOC, err := strconv.Atoi(r.FormValue("triggerSOC"))
+		if err != nil {
+			triggerSOC = 0
+		}
+		weScheduleCmd := database.ScheduleCommand{
+			BatteryCommandId: batteryCommandId, // Ersetzen Sie dies durch die tatsächliche ID
+			TriggerType:      r.FormValue("trigger"),
+			TriggerTime:      database.ParseTime(r.FormValue("triggerTime")),
+			TriggerSOC:       triggerSOC,
+			Triggered:        false,
+		}
+		database.AddScheduleCommand(weScheduleCmd)
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

@@ -3,6 +3,7 @@ body {
     background-color: #f3f3f3;
     margin: 0;
     padding: 0;
+    color: #333; /* Standardtextfarbe im Hell Mode */
 }
 
 .container {
@@ -153,9 +154,25 @@ input:checked + .slider:before {
     color: #fff;
     border: none;
     padding: 10px 20px;
-    border-radius: 5px;
+    font-size: 16px;
     cursor: pointer;
-    margin-top: 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.add-button {
+    background-color: #ffcc33;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.add-button:hover {
+    background-color: #ff9900;
 }
 
 /* Fehlermeldung */
@@ -241,21 +258,6 @@ input:checked + .slider:before {
     padding: 5px;
 }
 
-.add-button {
-    background-color: #ffcc33;
-    color: #333;
-    border: none;
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-}
-
-.add-button:hover {
-    background-color: #ff9900;
-}
-
 .delete-button {
     background-color: #f00;
     color: #fff;
@@ -277,4 +279,33 @@ input:checked + .slider:before {
 .delete-icon {
     font-size: 20px;
     margin-right: 5px;
+}
+
+/* Dark Mode Media Query */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #333; /* Hintergrundfarbe im Dark Mode */
+        color: #fff; /* Textfarbe im Dark Mode */
+    }
+
+    .container {
+        background-color: #000;
+    }
+
+    .setting {
+        border-bottom: 1px solid #ccc;
+    }
+
+    .planned-settings {
+        background-color: #222;
+        border: 1px solid #ccc;
+    }
+
+    .value {
+        color: #ddd;
+    }
+
+    .save-button {
+        background-color: #800;
+    }
 }

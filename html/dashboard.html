@@ -28,6 +28,18 @@
                 <span class="value">{{.Pac_total_W}}</span>
             </div>
         </li>
+    </ul>
+    <div class="header">
+        <h2>Wallbox</h2>
+    </div>
+    <ul class="settings-list">
+        <li>
+            <div class="setting">
+                <span>Wallbox Status</span>
+                <span class="value">{{.WallboxStatusText}} ({{.WallboxStatus}})</span>
+            </div>
+        </li>
+    </ul>
 </div>
 <div class="container">
     <div class="header">
@@ -35,44 +47,36 @@
     </div>
     <div class="planned-settings">
         <ul class="planned-settings-list">
-            <!-- Beispiel-Eintrag -->
+            {{if not .ScheduleComands}} 
+            <li>
+                <div class="planned-setting">
+                    <span style="width: 100%;text-align: center">--- Keine geplanten Einstellungen vorhanden ---</span>
+                </div>
+            </li>
+            {{else}}
+            {{range $i, $a := .ScheduleComands}}
             <li>
                 <div class="planned-setting">
                     <div class="setting-column-shrink">
-                        <span>1</span>
+                        <span>{{ len (printf "a%*s" $i "") }}</span>
                     </div>
                     <div class="setting-column">
-                        <span>Batterie laden</span>
+                        <span>{{$a.BatteryCommandName}}</span>
                     </div>
                     <div class="setting-column-shrink">
-                        <span>ab 14:00 Uhr</span>
+                        <span>{{ if eq $a.TriggerType "time"}}{{$a.TriggerTime.Format "02.01. 15:04" }} Uhr{{else if eq $a.TriggerType "SOC"}}{{$a.TriggerSOC}} %{{end}}</span>
                     </div>
                     <div class="setting-column-shrink">
-                        <button class="delete-button" onclick="deleteEntry(this)">X</button>
+                        <form action="/delete-schedule-command" method="POST"><input type="hidden" name="schedule-command-id" value="{{$a.Id}}"><button class="delete-button">X</button></form>
                     </div>
                 </div>
             </li>
-            <!-- Beispiel-Eintrag -->
-            <li>
-                <div class="planned-setting">
-                    <div class="setting-column-shrink">
-                        <span>2</span>
-                    </div>
-                    <div class="setting-column">
-                        <span>Batterie laden stoppen</span>
-                    </div>
-                    <div class="setting-column-shrink">
-                        <span>bei 60 %</span>
-                    </div>
-                    <div class="setting-column-shrink">
-                        <form action="/delete-schedule-command" method="POST"><input type="hidden" name="schedule-command-id" value="id"><button class="delete-button" onclick="deleteEntry(this)">X</button></form>
-                    </div>
-                </div>
-            </li>
+            {{end}}
+            {{end}}
         </ul>
         <!-- Hinzufügen von Einträgen -->
         <div class="add-setting">
-            <form action="/add-schedule-command" method="POST"><button id="add-button" class="add-button">Hinzufügen</button></form>
+            <form action="/add-schedule-command" method="GET"><button id="add-button" class="add-button">Hinzufügen</button></form>
         </div>
     </div>
 </div>
@@ -95,7 +99,7 @@
             <div class="setting">
                 <span>Batterie Laden</span>
                 <label class="switch">
-                    <input type="radio" name="batterie" value="laden" {{ if and (eq .OperationMode 1) (gt .Pac_total_W 0) }}checked{{ end }}>
+                    <input type="radio" name="batterie" value="laden" {{ if and (eq .OperationMode 1) (eq .BatteryCharging "lädt") }}checked{{ end }}>
                     <span class="slider round"></span>
                 </label>
             </div>
@@ -104,7 +108,7 @@
             <div class="setting">
                 <span>Batterie nicht entladen</span>
                 <label class="switch">
-                    <input type="radio" name="batterie" value="nicht_entladen" {{ if and (eq .OperationMode 1) (lt .Pac_total_W 0) }}checked{{ end }}>
+                    <input type="radio" name="batterie" value="nicht_entladen" {{ if and (eq .OperationMode 1) (eq .BatteryCharging "neutral") }}checked{{ end }}>
                     <span class="slider round"></span>
                 </label>
             </div>

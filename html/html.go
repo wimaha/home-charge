@@ -22,6 +22,9 @@ type DashboardParams struct {
 	SOC               string
 	BatteryCharging   string
 	Pac_total_W       string
+	WallboxStatus     int
+	WallboxStatusText string
+	ScheduleComands   []database.ScheduleCommand
 }
 
 func Dashboard(w io.Writer, p DashboardParams, partial string) error {
@@ -33,6 +36,7 @@ func Dashboard(w io.Writer, p DashboardParams, partial string) error {
 
 type EditScheduleCommandParams struct {
 	BatteryCommands []database.BatteryCommand
+	Title           string
 }
 
 func EditScheduleCommand(w io.Writer, p EditScheduleCommandParams, partial string) error {
