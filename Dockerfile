@@ -5,7 +5,7 @@ FROM golang:alpine AS builder
 #ENV CGO_ENABLED=1
 # Install git.
 # Git is required for fetching the dependencies.
-RUN apk update && apk add --no-cache git && apk add build-base
+RUN apk update && apk add --no-cache git && apk add build-base && apk --no-cache add tzdata
 WORKDIR $GOPATH/src/wimaha/home-charge/
 COPY . .
 # Fetch dependencies.
@@ -19,6 +19,9 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o /go/bin/home-charge -a -ldflags '-linkm
 # STEP 2 build a small image
 ############################
 FROM scratch
+# Timezone data
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+ENV TZ=Europe/Berlin
 # Copy our static executable.
 COPY --from=builder /go/bin/home-charge /home-charge
 COPY ./html ./html

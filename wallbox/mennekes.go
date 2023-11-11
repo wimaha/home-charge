@@ -42,14 +42,14 @@ func (w *Mennekes) readModbusRegister(register uint16) uint16 {
 	defer w.Client.Close()
 
 	var reg16 uint16
-	reg16, err = w.Client.ReadRegister(register, modbus.HOLDING_REGISTER)
-	if err != nil {
+	reg16, _ = w.Client.ReadRegister(register, modbus.HOLDING_REGISTER)
+	/*if err != nil {
 		// error out
 	} else {
 		// use value
-		fmt.Printf("value: %v\n", reg16)        // as unsigned integer
-		fmt.Printf("value: %v\n", int16(reg16)) // as signed integer
-	}
+		//fmt.Printf("value: %v\n", reg16)        // as unsigned integer
+		//fmt.Printf("value: %v\n", int16(reg16)) // as signed integer
+	}*/
 
 	return reg16
 }

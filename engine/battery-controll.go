@@ -6,9 +6,10 @@ import (
 
 	sonnenbatterie "github.com/wimaha/home-charge/battery"
 	"github.com/wimaha/home-charge/database"
+	"github.com/wimaha/home-charge/wallbox"
 )
 
-func DoScheduleCommands(sonnenbatterie sonnenbatterie.Sonnenbatterie) {
+func DoScheduleCommands(sonnenbatterie sonnenbatterie.Sonnenbatterie, wallboxInstance wallbox.Mennekes) {
 	scheduleCommands := database.GetScheduleCommands()
 
 	for _, scheduleCommand := range scheduleCommands {
@@ -39,6 +40,34 @@ func DoScheduleCommands(sonnenbatterie sonnenbatterie.Sonnenbatterie) {
 				scheduleCommand.Triggered = true
 				database.UpdateScheduleCommand(scheduleCommand)
 				triggerCommand(sonnenbatterie, scheduleCommand)
+			}
+		}
+	}
+
+	homeChargeStatus, err := database.GetHomeChargeStatus()
+	if !err && homeChargeStatus.WallboxAutomatic {
+		if wallboxInstance.Status() == 6 {
+			if sonnenbatterie.OperationMode() != 1 {
+				log.Println("Wallbox lädt -> Batterie nicht entladen")
+				sonnenbatterie.SetOperationMode(1)
+				sonnenbatterie.StopDischargeBattery()
+
+				logCommand := database.ScheduleCommand{
+					Id:               1,
+					BatteryCommandId: 3,
+				}
+				database.LogBatteryCommand(logCommand)
+			}
+		} else {
+			if sonnenbatterie.OperationMode() != 2 {
+				log.Println("Wallbox laden beendet -> Batterie in Automatic-Modus")
+				sonnenbatterie.SetOperationMode(2)
+
+				logCommand := database.ScheduleCommand{
+					Id:               1,
+					BatteryCommandId: 2,
+				}
+				database.LogBatteryCommand(logCommand)
 			}
 		}
 	}

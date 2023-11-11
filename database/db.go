@@ -20,6 +20,13 @@ func Setup() {
 	if err != nil {
 		CreateTables(db)
 	}
+
+	sql = `SELECT * FROM weHomeChargeStatus`
+	_, err = db.Exec(sql)
+	if err != nil {
+		CreateTablesV2(db)
+	}
+
 	defer db.Close()
 }
 
@@ -72,6 +79,86 @@ func CreateTables(db *sql.DB) {
 		log.Fatal("CREATE TABLE weScheduleCommand: ", err)
 	}
 	fmt.Println("table weScheduleCommand created")
+}
+
+func CreateTablesV2(db *sql.DB) {
+	fmt.Println("Create TablesV2")
+
+	sql := `CREATE TABLE IF NOT EXISTS weHomeChargeStatus (
+		id INTEGER PRIMARY KEY,
+		version INTEGER NOT NULL,
+		wallboxAutomatic BOOLEAN NOT NULL DEFAULT '1'
+	  );
+	  INSERT INTO weHomeChargeStatus (id, version, wallboxAutomatic) VALUES
+	  (1, 2, 1);`
+
+	_, err := db.Exec(sql)
+
+	if err != nil {
+		log.Fatal("CREATE TABLE weHomeChargeStatus: ", err)
+	}
+	fmt.Println("table weHomeChargeStatus created")
+}
+
+type HomeChargeStatus struct {
+	Id               int
+	Version          int
+	WallboxAutomatic bool
+}
+
+func GetHomeChargeStatus() (HomeChargeStatus, bool) {
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM weHomeChargeStatus WHERE id = 1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var id int
+		var version int
+		var wallboxAutomatic bool
+
+		err = rows.Scan(&id, &version, &wallboxAutomatic)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		homeChargeStatus := HomeChargeStatus{
+			Id:               id,
+			Version:          version,
+			WallboxAutomatic: wallboxAutomatic,
+		}
+		return homeChargeStatus, false
+	}
+
+	return HomeChargeStatus{}, true
+}
+
+func UpdateHomeChargeStatus(homeChargeStatus HomeChargeStatus) {
+	db, err := sql.Open("sqlite3", "database/home-charge.db")
+	if err != nil {
+		log.Fatal("Open: ", err)
+	}
+	defer db.Close()
+
+	// Daten in die Tabelle einfügen
+	updateSQL := `
+		UPDATE weHomeChargeStatus
+		SET version=?, wallboxAutomatic=?
+		WHERE id=?
+	`
+	_, err = db.Exec(updateSQL, homeChargeStatus.Version, homeChargeStatus.WallboxAutomatic, homeChargeStatus.Id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("weHomeChargeStatus wurde erfolgreich aktualisiert.")
 }
 
 type BatteryCommand struct {

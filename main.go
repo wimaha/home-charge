@@ -59,7 +59,7 @@ func startAutoControl() {
 		//println("AutoControl")
 		time.Sleep(10 * time.Second)
 		battery.Reload()
-		engine.DoScheduleCommands(*battery)
+		engine.DoScheduleCommands(*battery, *wallboxInstance)
 	}
 }
 
@@ -77,6 +77,7 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 	battery.Reload()
 	//sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
 	wStatus, wStatusText := wallboxInstance.StatusAndText()
+	homeChargeStatus, _ := database.GetHomeChargeStatus()
 	p := html.DashboardParams{
 		OperationMode:     battery.OperationMode(),
 		OperationModeText: battery.OperationModeText(),
@@ -86,6 +87,7 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 		WallboxStatus:     wStatus,
 		WallboxStatusText: wStatusText,
 		ScheduleComands:   database.GetScheduleCommands(),
+		HomeChargeStatus:  homeChargeStatus,
 	}
 	html.Dashboard(w, p, "")
 }
@@ -120,6 +122,23 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 		} else if batterie == "laden" {
 			battery.SetOperationMode(1)
 			battery.ChargeBattery()
+		}
+
+		wallboxAutomatic := r.FormValue("wallboxAutomatic")
+		if wallboxAutomatic == "true" {
+			//fmt.Println("wallboxAutomatic: true")
+			homeChargeStatus, err := database.GetHomeChargeStatus()
+			if !err {
+				homeChargeStatus.WallboxAutomatic = true
+				database.UpdateHomeChargeStatus(homeChargeStatus)
+			}
+		} else {
+			//fmt.Println("wallboxAutomatic: false")
+			homeChargeStatus, err := database.GetHomeChargeStatus()
+			if !err {
+				homeChargeStatus.WallboxAutomatic = false
+				database.UpdateHomeChargeStatus(homeChargeStatus)
+			}
 		}
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)

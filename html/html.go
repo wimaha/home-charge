@@ -25,6 +25,7 @@ type DashboardParams struct {
 	WallboxStatus     int
 	WallboxStatusText string
 	ScheduleComands   []database.ScheduleCommand
+	HomeChargeStatus  database.HomeChargeStatus
 }
 
 func Dashboard(w io.Writer, p DashboardParams, partial string) error {

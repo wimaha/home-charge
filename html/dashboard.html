@@ -86,7 +86,7 @@
     </div>
     <form action="/save-settings" method="POST">
     <ul class="settings-list">
-    <li>
+        <li>
             <div class="setting">
                 <span>Automatischer Modus</span>
                 <label class="switch">
@@ -109,6 +109,17 @@
                 <span>Batterie nicht entladen</span>
                 <label class="switch">
                     <input type="radio" name="batterie" value="nicht_entladen" {{ if and (eq .OperationMode 1) (eq .BatteryCharging "neutral") }}checked{{ end }}>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </li>
+    </ul>
+    <ul class="settings-list">
+        <li>
+            <div class="setting">
+                <span>Wenn Wallbox lädt, Batterie entladen stoppen</span>
+                <label class="switch">
+                    <input type="checkbox" name="wallboxAutomatic" value="true" {{ if eq .HomeChargeStatus.WallboxAutomatic true }}checked{{ end }}>
                     <span class="slider round"></span>
                 </label>
             </div>
