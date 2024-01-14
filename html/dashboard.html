@@ -29,6 +29,7 @@
             </div>
         </li>
     </ul>
+    {{ if ne .WallboxStatus "NC" }}
     <div class="header">
         <h2>Wallbox</h2>
     </div>
@@ -40,6 +41,7 @@
             </div>
         </li>
     </ul>
+    {{ end }}
 </div>
 <div class="container">
     <div class="header">
@@ -114,6 +116,7 @@
             </div>
         </li>
     </ul>
+    {{ if ne .WallboxStatus "NC" }}
     <ul class="settings-list">
         <li>
             <div class="setting">
@@ -125,6 +128,7 @@
             </div>
         </li>
     </ul>
+    {{ end }}
     <button id="save-button" class="save-button" type="submit">Speichern</button>
     </form>
 </div>

@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/wimaha/home-charge/database"
+	"github.com/wimaha/home-charge/wallbox"
 )
 
 //go:embed *
@@ -22,7 +23,7 @@ type DashboardParams struct {
 	SOC               string
 	BatteryCharging   string
 	Pac_total_W       string
-	WallboxStatus     int
+	WallboxStatus     wallbox.ChargeStatus
 	WallboxStatusText string
 	ScheduleComands   []database.ScheduleCommand
 	HomeChargeStatus  database.HomeChargeStatus

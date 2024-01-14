@@ -1,54 +1,53 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	sonnenbatterie "github.com/wimaha/home-charge/battery"
+	"github.com/wimaha/home-charge/battery"
 	"github.com/wimaha/home-charge/database"
 	"github.com/wimaha/home-charge/engine"
 	"github.com/wimaha/home-charge/html"
+	"github.com/wimaha/home-charge/mqtt"
+	"github.com/wimaha/home-charge/settings"
 	"github.com/wimaha/home-charge/wallbox"
-	yaml "gopkg.in/yaml.v3"
 )
 
-type conf struct {
-	ApiToken  string `yaml:"apiToken"`
-	BatteryIP string `yaml:"batteryIP"`
-	WallboxIP string `yaml:"wallboxIP"`
-}
-
-func (c *conf) getConf() *conf {
-	yamlFile, err := os.ReadFile("settings/config.yaml")
-	if err != nil {
-		fmt.Printf("yamlFile.Get err   #%v ", err)
-	}
-	err = yaml.Unmarshal(yamlFile, c)
-	if err != nil {
-		fmt.Printf("Unmarshal: %v", err)
-	}
-
-	return c
-}
-
-var config *conf
-var battery *sonnenbatterie.Sonnenbatterie
-var wallboxInstance *wallbox.Mennekes
+var env = settings.Environment{}
 
 func main() {
 	log.Println("HomeCharge is loading ...")
-	var c conf
-	config = c.getConf()
-	battery = sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
+	log.Println("Config loading ...")
+	var c settings.Conf
+	env.Config = c.GetConf()
+	if !env.Config.CheckConf(true) {
+		os.Exit(1)
+	}
+
+	env.Battery = battery.NewSonnenbatterie(env.Config.Sonnenbatterie.ApiToken, env.Config.Sonnenbatterie.Host)
+
+	if env.Config.Mqtt != nil {
+		env.MqttClient = mqtt.NewMqttClient(env.Config.Mqtt.Host, env.Config.Mqtt.Port)
+	} else {
+		env.MqttClient = nil
+	}
+	if env.Config.InfluxDB != nil {
+		env.InfluxClient = database.NewInfluxClient(env.Config.InfluxDB.Host, env.Config.InfluxDB.Port, env.Config.InfluxDB.Token, env.Config.InfluxDB.Organisation, env.Config.InfluxDB.Querys.ProductionTotal)
+	} else {
+		env.InfluxClient = nil
+	}
 
 	go startAutoControl()
 	database.Setup()
 
-	wallboxInstance = wallbox.NewMennekes(config.WallboxIP)
+	if env.Config.Wallbox != nil {
+		env.WallboxInstance = wallbox.NewMennekes(env.Config.Wallbox.Host)
+	} else {
+		env.WallboxInstance = nil
+	}
 
 	log.Println("HomeCharge is running")
 	startWebserver()
@@ -57,9 +56,10 @@ func main() {
 func startAutoControl() {
 	for {
 		//println("AutoControl")
-		time.Sleep(10 * time.Second)
-		battery.Reload()
-		engine.DoScheduleCommands(*battery, *wallboxInstance)
+		time.Sleep(5 * time.Second)
+		env.Battery.Reload()
+		engine.DoScheduleCommands(*env.Battery, env.WallboxInstance)
+		engine.Awtrix_doAll(&env)
 	}
 }
 
@@ -74,16 +74,22 @@ func startWebserver() {
 }
 
 func dashboard(w http.ResponseWriter, r *http.Request) {
-	battery.Reload()
-	//sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
-	wStatus, wStatusText := wallboxInstance.StatusAndText()
+	env.Battery.Reload()
+	var wStatus wallbox.ChargeStatus
+	var wStatusText string
+	if env.WallboxInstance != nil {
+		wStatus, wStatusText = env.WallboxInstance.StatusAndText()
+	} else {
+		wStatus = wallbox.StatusNotConfig
+		wStatusText = ""
+	}
 	homeChargeStatus, _ := database.GetHomeChargeStatus()
 	p := html.DashboardParams{
-		OperationMode:     battery.OperationMode(),
-		OperationModeText: battery.OperationModeText(),
-		SOC:               battery.SocText(),
-		BatteryCharging:   battery.BatteryCharging(),
-		Pac_total_W:       battery.PacTotalW(),
+		OperationMode:     env.Battery.OperationMode(),
+		OperationModeText: env.Battery.OperationModeText(),
+		SOC:               env.Battery.SocText(),
+		BatteryCharging:   env.Battery.BatteryCharging(),
+		Pac_total_W:       env.Battery.PacTotalW(),
 		WallboxStatus:     wStatus,
 		WallboxStatusText: wStatusText,
 		ScheduleComands:   database.GetScheduleCommands(),
@@ -93,8 +99,7 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveSettings(w http.ResponseWriter, r *http.Request) {
-	battery.Reload()
-	//sonnenbatterie := sonnenbatterie.NewSonnenbatterie(config.ApiToken, config.BatteryIP)
+	env.Battery.Reload()
 
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
@@ -115,13 +120,13 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 
 		batterie := r.FormValue("batterie")
 		if batterie == "auto" {
-			battery.SetOperationMode(2)
+			env.Battery.SetOperationMode(2)
 		} else if batterie == "nicht_entladen" {
-			battery.SetOperationMode(1)
-			battery.StopDischargeBattery()
+			env.Battery.SetOperationMode(1)
+			env.Battery.StopDischargeBattery()
 		} else if batterie == "laden" {
-			battery.SetOperationMode(1)
-			battery.ChargeBattery()
+			env.Battery.SetOperationMode(1)
+			env.Battery.ChargeBattery()
 		}
 
 		wallboxAutomatic := r.FormValue("wallboxAutomatic")

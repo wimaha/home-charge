@@ -1,4 +1,4 @@
-package sonnenbatterie
+package battery
 
 import (
 	"bytes"
@@ -50,6 +50,16 @@ func (s *Sonnenbatterie) BatteryCharging() string {
 	} else {
 		return "neutral"
 	}
+}
+
+func (s *Sonnenbatterie) ProductionW() int {
+	status := s.status()
+	return int(status["Production_W"].(float64))
+}
+
+func (s *Sonnenbatterie) ConsumptionW() int {
+	status := s.status()
+	return int(status["Consumption_W"].(float64))
 }
 
 func (s *Sonnenbatterie) PacTotalW() string {

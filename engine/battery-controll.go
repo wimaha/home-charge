@@ -4,12 +4,12 @@ import (
 	"log"
 	"time"
 
-	sonnenbatterie "github.com/wimaha/home-charge/battery"
+	"github.com/wimaha/home-charge/battery"
 	"github.com/wimaha/home-charge/database"
 	"github.com/wimaha/home-charge/wallbox"
 )
 
-func DoScheduleCommands(sonnenbatterie sonnenbatterie.Sonnenbatterie, wallboxInstance wallbox.Mennekes) {
+func DoScheduleCommands(sonnenbatterie battery.Sonnenbatterie, wallboxInstance *wallbox.Mennekes) {
 	scheduleCommands := database.GetScheduleCommands()
 
 	for _, scheduleCommand := range scheduleCommands {
@@ -26,9 +26,9 @@ func DoScheduleCommands(sonnenbatterie sonnenbatterie.Sonnenbatterie, wallboxIns
 				scheduleCommand.Triggered = true
 				database.UpdateScheduleCommand(scheduleCommand)
 				triggerCommand(sonnenbatterie, scheduleCommand)
-			} else {
+			} /*else {
 				//fmt.Println("Hier B")
-			}
+			}*/
 		}
 		// Trigger SOC
 		if scheduleCommand.TriggerType == "SOC" {
@@ -45,35 +45,40 @@ func DoScheduleCommands(sonnenbatterie sonnenbatterie.Sonnenbatterie, wallboxIns
 	}
 
 	homeChargeStatus, err := database.GetHomeChargeStatus()
-	if !err && homeChargeStatus.WallboxAutomatic {
-		if wallboxInstance.Status() == 6 {
-			if sonnenbatterie.OperationMode() != 1 {
-				log.Println("Wallbox lädt -> Batterie nicht entladen")
-				sonnenbatterie.SetOperationMode(1)
-				sonnenbatterie.StopDischargeBattery()
-
-				logCommand := database.ScheduleCommand{
-					Id:               1,
-					BatteryCommandId: 3,
-				}
-				database.LogBatteryCommand(logCommand)
-			}
+	if !err && homeChargeStatus.WallboxAutomatic && wallboxInstance != nil {
+		status, err := wallboxInstance.Status()
+		if err != nil {
+			log.Printf("Fehler beim Abruf des Wallbox-Status: %v\n", err)
 		} else {
-			if sonnenbatterie.OperationMode() != 2 {
-				log.Println("Wallbox laden beendet -> Batterie in Automatic-Modus")
-				sonnenbatterie.SetOperationMode(2)
+			if status == wallbox.StatusCharging {
+				if sonnenbatterie.OperationMode() != 1 {
+					log.Println("Wallbox lädt -> Batterie nicht entladen")
+					sonnenbatterie.SetOperationMode(1)
+					sonnenbatterie.StopDischargeBattery()
 
-				logCommand := database.ScheduleCommand{
-					Id:               1,
-					BatteryCommandId: 2,
+					logCommand := database.ScheduleCommand{
+						Id:               1,
+						BatteryCommandId: 3,
+					}
+					database.LogBatteryCommand(logCommand)
 				}
-				database.LogBatteryCommand(logCommand)
+			} else {
+				if sonnenbatterie.OperationMode() != 2 {
+					log.Println("Wallbox laden beendet -> Batterie in Automatic-Modus")
+					sonnenbatterie.SetOperationMode(2)
+
+					logCommand := database.ScheduleCommand{
+						Id:               1,
+						BatteryCommandId: 2,
+					}
+					database.LogBatteryCommand(logCommand)
+				}
 			}
 		}
 	}
 }
 
-func triggerCommand(sonnenbatterie sonnenbatterie.Sonnenbatterie, scheduleCommand database.ScheduleCommand) {
+func triggerCommand(sonnenbatterie battery.Sonnenbatterie, scheduleCommand database.ScheduleCommand) {
 	database.LogBatteryCommand(scheduleCommand)
 
 	switch scheduleCommand.BatteryCommandId {

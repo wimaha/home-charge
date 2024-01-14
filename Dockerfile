@@ -1,7 +1,8 @@
 ﻿############################
 # STEP 1 build executable binary
 ############################
-FROM golang:alpine AS builder
+#alpine3.18
+FROM golang:alpine3.18 AS builder
 #ENV CGO_ENABLED=1
 # Install git.
 # Git is required for fetching the dependencies.
