@@ -1,2 +1,27 @@
-apiToken: "<<API-TOKEN der Sonnenbatterie>>"
-batteryIP: "<<IP der Sonnenbatterie>>"
+# Sonnenbatterie
+sonnenbatterie:
+  apiToken: "<<API-TOKEN der Sonnenbatterie>>"
+  host: "<<IP der Sonnenbatterie>>"
+
+###Sofern eine Funktion nicht genutzt werden soll, bitte den Eintrag auskommentieren
+#Wallbox (optional)
+wallbox:
+  type: mennekes
+  host: "<<IP der Wallbox>>"
+
+##Für die Awtrix light - Integration wird Verbindung zu Influx-DB, Mqtt und Awtrix Light benötigt. Weitere Voraussetzungen in der GitHub-Doku.
+#MQTT (optional)
+mqtt:
+  host: "<<IP MQTT>>"
+  port: "<<Port MQTT>>"
+#Awtrix light (optional)
+awtrix:
+  prefix: "awtrix"
+#InfluxDB2 (optional)
+influxdb:
+  host: "<<IP InfluxDB2>>"
+  port: "<<Port InfluxDB2>>"
+  token: "<<Token InfluxDB2>>"
+  organisation: "<<Organisation InfluxDB2>>"
+  querys:
+    productionTotal: "from(bucket: \"mqtt\")|> range(start: today())|> filter(fn: (r) => r[\"_measurement\"] == \"http\")|> filter(fn: (r) => r[\"_field\"] == \"Production_W\")|> cumulativeSum()|> last()|> map(fn: (r) => ({r with _value: r._value/1800.0}))|> yield(name: \"mean\")"
