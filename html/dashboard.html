@@ -42,6 +42,21 @@
         </li>
     </ul>
     {{ end }}
+    {{ if eq .Connections true }}
+    <div class="header">
+        <h2>Verbindungen</h2>
+    </div>
+    <ul class="settings-list">
+        {{ if ne .MqttStatus "NC" }}
+        <li>
+            <div class="setting">
+                <span>MQTT Status</span>
+                <span class="value">{{.MqttStatus}}</span>
+            </div>
+        </li>
+        {{ end }}
+    </ul>
+    {{ end }}
 </div>
 <div class="container">
     <div class="header">
@@ -131,5 +146,6 @@
     {{ end }}
     <button id="save-button" class="save-button" type="submit">Speichern</button>
     </form>
+    - Version 0.12 -
 </div>
 {{end}}

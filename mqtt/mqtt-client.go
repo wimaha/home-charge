@@ -12,20 +12,20 @@ type MqttClient struct {
 	client mqtt.Client
 }
 
-func NewMqttClient(mqttIp string, mqttPort string) *MqttClient {
+func NewMqttClient(mqttIp string, mqttPort string, mqttClientId string) *MqttClient {
 	return &MqttClient{
-		client: connect(mqttIp, mqttPort),
+		client: connect(mqttIp, mqttPort, mqttClientId),
 	}
 }
 
-func connect(mqttIp string, mqttPort string) mqtt.Client {
-	opts := createClientOptions("homeCharge", fmt.Sprintf("tcp://%s:%s", mqttIp, mqttPort))
+func connect(mqttIp string, mqttPort string, clientId string) mqtt.Client {
+	opts := createClientOptions(clientId, fmt.Sprintf("tcp://%s:%s", mqttIp, mqttPort))
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 	for !token.WaitTimeout(3 * time.Second) {
 	}
 	if err := token.Error(); err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	return client
 }
@@ -42,5 +42,14 @@ func (c *MqttClient) Publish(topic string, body string) {
 		c.client.Connect()
 	}
 
-	c.client.Publish(topic, 0, false, body)
+	token := c.client.Publish(topic, 0, false, body)
+	for !token.WaitTimeout(3 * time.Second) {
+	}
+	if err := token.Error(); err != nil {
+		log.Println(err)
+	}
+}
+
+func (c *MqttClient) IsConnected() bool {
+	return c.client.IsConnectionOpen()
 }

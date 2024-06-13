@@ -22,3 +22,5 @@ go.work
 *.yaml
 .DS_Store
 home-charge
+
+config_bc.yaml

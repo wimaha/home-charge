@@ -33,61 +33,64 @@ func doCurrentWattAndBattery(env *settings.Environment) {
 		return
 	}
 
-	var tempCurrentProduction_W = env.Battery.ProductionW()
-	var tempCurrentSoc = env.Battery.Soc()
-
-	if tempCurrentProduction_W != 0 {
-		production_W_lastNonZero = time.Now()
-	}
-	if tempCurrentSoc != 0 {
-		currentSoc_lastNonZero = time.Now()
-	}
-
-	before10Minutes := time.Now().Add(-10 * time.Minute)
-	if !production_W_lastNonZero.Before(before10Minutes) {
-		//Vollständigen View anzeigen, da innerhalb der letzten 10 Minuten > 0
-		if tempCurrentProduction_W != currentProduction_W || tempCurrentSoc != currentSoc {
-			currentProduction_W = tempCurrentProduction_W
-			currentSoc = tempCurrentSoc
-
-			var topic = fmt.Sprintf("%s/custom/ProductionW", env.Config.Awtrix.Prefix)
-			var body = fmt.Sprintf(`{
-				"pos" : 2,
-				"color" : "FFFFFF",
-				"progress" : %d,
-				"icon" : "52730",
-				"text" : "%d W",
-				"textCase" : 2
-			  }`, currentSoc, currentProduction_W)
-			env.MqttClient.Publish(topic, body)
-			prodSocHidden = false
+	tempCurrentProduction_W, ok1 := env.Battery.ProductionW()
+	tempCurrentSoc, ok2 := env.Battery.Soc()
+	if ok1 && ok2 {
+		if tempCurrentProduction_W != 0 {
+			production_W_lastNonZero = time.Now()
 		}
-		//fmt.Println("Vollständiger View")
-	} else if !currentSoc_lastNonZero.Before(before10Minutes) {
-		//Batterie View anzeigen
-		if tempCurrentSoc != currentSoc {
-			currentSoc = tempCurrentSoc
-
-			var topic = fmt.Sprintf("%s/custom/ProductionW", env.Config.Awtrix.Prefix)
-			var body = fmt.Sprintf(`{
-				"pos" : 2,
-				"color" : "FFFFFF",
-				"icon" : "batteryfull",
-				"text" : "%d %%",
-				"textCase" : 2
-			  }`, currentSoc)
-			env.MqttClient.Publish(topic, body)
-			prodSocHidden = false
+		if tempCurrentSoc != 0 {
+			currentSoc_lastNonZero = time.Now()
 		}
-		//fmt.Println("Batterie View")
+
+		before10Minutes := time.Now().Add(-10 * time.Minute)
+		if !production_W_lastNonZero.Before(before10Minutes) {
+			//Vollständigen View anzeigen, da innerhalb der letzten 10 Minuten > 0
+			if tempCurrentProduction_W != currentProduction_W || tempCurrentSoc != currentSoc {
+				currentProduction_W = tempCurrentProduction_W
+				currentSoc = tempCurrentSoc
+
+				var topic = fmt.Sprintf("%s/custom/ProductionW", env.Config.Awtrix.Prefix)
+				var body = fmt.Sprintf(`{
+					"pos" : 2,
+					"color" : "FFFFFF",
+					"progress" : %d,
+					"icon" : "52730",
+					"text" : "%d W",
+					"textCase" : 2
+				}`, currentSoc, currentProduction_W)
+				env.MqttClient.Publish(topic, body)
+				prodSocHidden = false
+			}
+			//fmt.Println("Vollständiger View")
+		} else if !currentSoc_lastNonZero.Before(before10Minutes) {
+			//Batterie View anzeigen
+			if tempCurrentSoc != currentSoc {
+				currentSoc = tempCurrentSoc
+
+				var topic = fmt.Sprintf("%s/custom/ProductionW", env.Config.Awtrix.Prefix)
+				var body = fmt.Sprintf(`{
+					"pos" : 2,
+					"color" : "FFFFFF",
+					"icon" : "batteryfull",
+					"text" : "%d %%",
+					"textCase" : 2
+				}`, currentSoc)
+				env.MqttClient.Publish(topic, body)
+				prodSocHidden = false
+			}
+			//fmt.Println("Batterie View")
+		} else {
+			//View ausblenden
+			if !prodSocHidden {
+				prodSocHidden = true
+				var topic = fmt.Sprintf("%s/custom/ProductionW", env.Config.Awtrix.Prefix)
+				env.MqttClient.Publish(topic, "")
+			}
+			//fmt.Println("Kein View")
+		}
 	} else {
-		//View ausblenden
-		if !prodSocHidden {
-			prodSocHidden = true
-			var topic = fmt.Sprintf("%s/custom/ProductionW", env.Config.Awtrix.Prefix)
-			env.MqttClient.Publish(topic, "")
-		}
-		//fmt.Println("Kein View")
+		//TODO: Error View anzeigen
 	}
 }
 
@@ -99,28 +102,31 @@ func doCurrentConsumption(env *settings.Environment) {
 		return
 	}
 
-	var tempCurrentConsumption_W = env.Battery.ConsumptionW()
-	if tempCurrentConsumption_W != currentConsumption_W {
-		currentConsumption_W = tempCurrentConsumption_W
+	if tempCurrentConsumption_W, ok := env.Battery.ConsumptionW(); ok {
+		if tempCurrentConsumption_W != currentConsumption_W {
+			currentConsumption_W = tempCurrentConsumption_W
 
-		var consString string
-		if currentConsumption_W >= 10000.0 {
-			value := fmt.Sprintf("%.1f %s", float64(currentConsumption_W)/1000.0, "kW")
-			consString = strings.Replace(value, ".", ",", -1)
-		} else {
-			consString = fmt.Sprintf("%d %s", currentConsumption_W, "W")
+			var consString string
+			if currentConsumption_W >= 10000.0 {
+				value := fmt.Sprintf("%.1f %s", float64(currentConsumption_W)/1000.0, "kW")
+				consString = strings.Replace(value, ".", ",", -1)
+			} else {
+				consString = fmt.Sprintf("%d %s", currentConsumption_W, "W")
+			}
+
+			//fmt.Printf("doCurrentConsumption: %s \n", consString)
+
+			var topic = fmt.Sprintf("%s/custom/ConsumptionW", env.Config.Awtrix.Prefix)
+			var body = fmt.Sprintf(`{
+				"color" : "FFFFFF",
+				"icon" : "54064",
+				"text" : "%s",
+				"textCase" : 2
+			}`, consString)
+			env.MqttClient.Publish(topic, body)
 		}
-
-		//fmt.Printf("doCurrentConsumption: %s \n", consString)
-
-		var topic = fmt.Sprintf("%s/custom/ConsumptionW", env.Config.Awtrix.Prefix)
-		var body = fmt.Sprintf(`{
-			"color" : "FFFFFF",
-			"icon" : "54064",
-			"text" : "%s",
-			"textCase" : 2
-		  }`, consString)
-		env.MqttClient.Publish(topic, body)
+	} else {
+		//TODO: Error View anzeigen
 	}
 }
 

@@ -29,17 +29,26 @@ func (s *Sonnenbatterie) Reload() {
 	s.OperationModeStored = -1
 }
 
-func (s *Sonnenbatterie) Soc() int {
+func (s *Sonnenbatterie) Soc() (int, bool) {
 	status := s.status()
-	return int(status["USOC"].(float64))
+	if status == nil {
+		return 0, false
+	}
+	return int(status["USOC"].(float64)), true
 }
 
 func (s *Sonnenbatterie) SocText() string {
-	return fmt.Sprintf("%d %%", s.Soc())
+	if soc, ok := s.Soc(); ok {
+		return fmt.Sprintf("%d %%", soc)
+	}
+	return "error: 1A"
 }
 
 func (s *Sonnenbatterie) BatteryCharging() string {
 	status := s.status()
+	if status == nil {
+		return "error: 1A"
+	}
 	batteryCharging := status["BatteryCharging"].(bool)
 	batteryDischarging := status["BatteryDischarging"].(bool)
 
@@ -52,18 +61,27 @@ func (s *Sonnenbatterie) BatteryCharging() string {
 	}
 }
 
-func (s *Sonnenbatterie) ProductionW() int {
+func (s *Sonnenbatterie) ProductionW() (int, bool) {
 	status := s.status()
-	return int(status["Production_W"].(float64))
+	if status == nil {
+		return 0, false
+	}
+	return int(status["Production_W"].(float64)), true
 }
 
-func (s *Sonnenbatterie) ConsumptionW() int {
+func (s *Sonnenbatterie) ConsumptionW() (int, bool) {
 	status := s.status()
-	return int(status["Consumption_W"].(float64))
+	if status == nil {
+		return 0, false
+	}
+	return int(status["Consumption_W"].(float64)), true
 }
 
 func (s *Sonnenbatterie) PacTotalW() string {
 	status := s.status()
+	if status == nil {
+		return "err W"
+	}
 	return fmt.Sprintf("%.0f W", status["Pac_total_W"].(float64))
 }
 

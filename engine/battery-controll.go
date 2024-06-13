@@ -34,9 +34,9 @@ func DoScheduleCommands(sonnenbatterie battery.Sonnenbatterie, wallboxInstance *
 		if scheduleCommand.TriggerType == "SOC" {
 			dateNow := time.Now() // Aktueller Zeitstempel
 			dateConvert := scheduleCommand.TriggerTime
-			soc := sonnenbatterie.Soc()
+			soc, ok := sonnenbatterie.Soc()
 
-			if dateNow.After(dateConvert) && soc >= scheduleCommand.TriggerSOC {
+			if dateNow.After(dateConvert) && ok && soc >= scheduleCommand.TriggerSOC {
 				scheduleCommand.Triggered = true
 				database.UpdateScheduleCommand(scheduleCommand)
 				triggerCommand(sonnenbatterie, scheduleCommand)
@@ -94,5 +94,5 @@ func triggerCommand(sonnenbatterie battery.Sonnenbatterie, scheduleCommand datab
 		sonnenbatterie.SetOperationMode(2)
 	}
 
-	log.Println("Operation ausgeführt.")
+	//log.Println("Operation ausgeführt.")
 }

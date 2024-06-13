@@ -22,8 +22,9 @@ type Conf struct {
 		Host string `yaml:"host"`
 	} `yaml:"wallbox,omitempty"`
 	Mqtt *struct {
-		Host string `yaml:"host"`
-		Port string `yaml:"port"`
+		Host     string `yaml:"host"`
+		Port     string `yaml:"port"`
+		ClientId string `yaml:"clientId"`
 	} `yaml:"mqtt,omitempty"`
 	Awtrix *struct {
 		Prefix string `yaml:"prefix"`

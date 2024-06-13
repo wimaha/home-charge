@@ -30,7 +30,7 @@ func main() {
 	env.Battery = battery.NewSonnenbatterie(env.Config.Sonnenbatterie.ApiToken, env.Config.Sonnenbatterie.Host)
 
 	if env.Config.Mqtt != nil {
-		env.MqttClient = mqtt.NewMqttClient(env.Config.Mqtt.Host, env.Config.Mqtt.Port)
+		env.MqttClient = mqtt.NewMqttClient(env.Config.Mqtt.Host, env.Config.Mqtt.Port, env.Config.Mqtt.ClientId)
 	} else {
 		env.MqttClient = nil
 	}
@@ -69,8 +69,58 @@ func startWebserver() {
 	http.HandleFunc("/add-schedule-command", addScheduleCommand)
 	http.HandleFunc("/save-schedule-command", saveScheduleCommand)
 	http.HandleFunc("/delete-schedule-command", deleteScheduleCommand)
+	http.HandleFunc("/api/1/vitals", twc3simulator)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.ListenAndServe(":7618", nil)
+}
+
+func twc3simulator(w http.ResponseWriter, r *http.Request) {
+	p := html.Twc3SimulatorParams{
+		ContactorClosed:  false,
+		VehicleConnected: false,
+		ChargingDuration: 0,
+		Current1:         0,
+		Current2:         0,
+		Current3:         0,
+		Voltage1:         0,
+		Voltage2:         0,
+		Voltage3:         0,
+		SessionEnergyWh:  0,
+	}
+
+	if env.WallboxInstance != nil {
+		status, err := env.WallboxInstance.Status()
+		if err == nil {
+			if status == wallbox.StatusCharging {
+				p.ContactorClosed = true
+			}
+			if status == wallbox.StatusOccupied || status == wallbox.StatusCharging {
+				p.VehicleConnected = true
+			}
+		}
+		chargingDuration, err := env.WallboxInstance.ChargingDuration()
+		if err == nil {
+			p.ChargingDuration = chargingDuration
+		}
+		c1, c2, c3, err := env.WallboxInstance.Current()
+		if err == nil {
+			p.Current1 = c1
+			p.Current2 = c2
+			p.Current3 = c3
+		}
+		v1, v2, v3, err := env.WallboxInstance.Voltage()
+		if err == nil {
+			p.Voltage1 = v1
+			p.Voltage2 = v2
+			p.Voltage3 = v3
+		}
+		sessionEnergyWh, err := env.WallboxInstance.SessionEnergyWh()
+		if err == nil {
+			p.SessionEnergyWh = sessionEnergyWh
+		}
+	}
+
+	html.Twc3Simulator(w, p)
 }
 
 func dashboard(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +134,18 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 		wStatusText = ""
 	}
 	homeChargeStatus, _ := database.GetHomeChargeStatus()
+
+	var connections = false
+	var mqttStatus = "NC"
+	if env.MqttClient != nil {
+		connections = true
+		if env.MqttClient.IsConnected() {
+			mqttStatus = "🟢"
+		} else {
+			mqttStatus = "🔴"
+		}
+	}
+
 	p := html.DashboardParams{
 		OperationMode:     env.Battery.OperationMode(),
 		OperationModeText: env.Battery.OperationModeText(),
@@ -94,6 +156,8 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 		WallboxStatusText: wStatusText,
 		ScheduleComands:   database.GetScheduleCommands(),
 		HomeChargeStatus:  homeChargeStatus,
+		Connections:       connections,
+		MqttStatus:        mqttStatus,
 	}
 	html.Dashboard(w, p, "")
 }
